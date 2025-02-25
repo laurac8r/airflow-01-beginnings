@@ -172,6 +172,7 @@ cython_debug/
 .pypirc
 
 # NEW
+logs/
 airflow.db
 *.pem
 */**/.pem
