@@ -1,3 +1,4 @@
+import json
 from typing import Dict, Any
 
 from airflow import DAG
@@ -31,13 +32,39 @@ with DAG('lauras-extract-transform-load-DAG', description='A simple tutorial DAG
         """
         kwargs: Dict[str, Any]
         ti = kwargs['ti']
-        order_data = ti.xcom_pull(key='order_data', task_ids='extract')
+
+        order_data_str = ti.xcom_pull(key='order_data', task_ids='extract')
+        order_data = json.loads(order_data_str)
+
         total_amount = sum(order_data.values())
-        ti.xcom_push(key='total_amount', value=total_amount)
+
+        total_value = {'total_order_value': total_amount}
+        total_value_str = json.dumps(total_value)
+
+        ti.xcom_push(key='total_amount', value=total_value_str)
+
+
+    def load(**kwargs) -> None:
+        """
+        Load sample data.
+        Args:
+            **kwargs: Python callable arguments
+
+        Returns:
+            None
+        """
+        kwargs: Dict[str, Any]
+        ti = kwargs['ti']
+        total_value_str = ti.xcom_pull(key='total_amount', task_ids='transform')
+        total_order_value = json.loads(total_value_str)
+
+        print(total_order_value)
 
 
     extract_task = PythonOperator(task_id='extract', python_callable=extract)
 
     transform_task = PythonOperator(task_id='transform', python_callable=transform)
 
-    extract_task >> transform_task
+    load_task = PythonOperator(task_id='load', python_callable=load)
+
+    extract_task >> transform_task >> load_task
